@@ -1,4 +1,3 @@
-import './styles.css';
 import { startApp } from './app/app.js';
 
 const root = document.getElementById('app');
