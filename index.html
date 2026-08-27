@@ -17,23 +17,13 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-  <div id="app">
-    <main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Загрузка приложения…</p><div id="bootError" class="boot-error"></div></section></main>
-  </div>
+  <div id="app"><main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Загрузка приложения…</p><div id="bootError" class="boot-error"></div></section></main></div>
   <noscript><main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Для работы приложения необходимо включить JavaScript.</p></section></main></noscript>
-  <script>
-    window.addEventListener('error', function (event) {
-      var box = document.getElementById('bootError');
-      if (box) { box.style.display = 'block'; box.textContent = 'Не удалось запустить приложение.\n' + (event.error?.message || event.message || 'Неизвестная ошибка'); }
-    });
-    window.addEventListener('unhandledrejection', function (event) {
-      var box = document.getElementById('bootError');
-      if (box) { box.style.display = 'block'; box.textContent = 'Ошибка запуска приложения.\n' + (event.reason?.message || String(event.reason)); }
-    });
-  </script>
+  <script>window.addEventListener('error',function(e){var b=document.getElementById('bootError');if(b){b.style.display='block';b.textContent='Не удалось запустить приложение.\n'+(e.error?.message||e.message||'Неизвестная ошибка')}});window.addEventListener('unhandledrejection',function(e){var b=document.getElementById('bootError');if(b){b.style.display='block';b.textContent='Ошибка запуска приложения.\n'+(e.reason?.message||String(e.reason))}});</script>
   <script type="module" src="./src/main.js"></script>
   <script type="module" src="./src/nomenclature.js"></script>
   <script type="module" src="./src/warehouse.js"></script>
   <script type="module" src="./src/warehouse-resize.js"></script>
+  <script type="module" src="./src/warehouse-enhancements.js"></script>
 </body>
 </html>
