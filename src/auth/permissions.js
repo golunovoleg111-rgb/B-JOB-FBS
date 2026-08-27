@@ -5,11 +5,16 @@ export const ROLES = {
 };
 
 export const PERMISSIONS = [
+  { id: 'warehouse.view', label: 'Просмотр карты склада' },
   { id: 'warehouse.edit', label: 'Редактирование склада' },
   { id: 'inventory.view', label: 'Просмотр учета склада' },
-  { id: 'deliveries.manage', label: 'Заявки на поставки' },
-  { id: 'transfers.manage', label: 'Заявки на перемещение' },
-  { id: 'revisions.manage', label: 'Ревизии' },
+  { id: 'deliveries.view', label: 'Просмотр заявок на поставки' },
+  { id: 'deliveries.manage', label: 'Управление поставками' },
+  { id: 'transfers.view', label: 'Просмотр заявок на перемещение' },
+  { id: 'transfers.manage', label: 'Управление перемещениями' },
+  { id: 'revisions.view', label: 'Просмотр ревизий' },
+  { id: 'revisions.manage', label: 'Управление ревизиями' },
+  { id: 'nomenclature.view', label: 'Просмотр номенклатуры' },
   { id: 'nomenclature.manage', label: 'Учет номенклатуры' },
   { id: 'users.manage', label: 'Управление сотрудниками' }
 ];
@@ -17,10 +22,11 @@ export const PERMISSIONS = [
 const ROLE_DEFAULTS = {
   admin: PERMISSIONS.map(permission => permission.id),
   manager: [
-    'warehouse.edit', 'inventory.view', 'deliveries.manage',
-    'transfers.manage', 'revisions.manage', 'nomenclature.manage'
+    'warehouse.view', 'warehouse.edit', 'inventory.view',
+    'deliveries.view', 'deliveries.manage', 'transfers.view', 'transfers.manage',
+    'revisions.view', 'revisions.manage', 'nomenclature.view', 'nomenclature.manage'
   ],
-  picker: ['inventory.view']
+  picker: ['warehouse.view', 'inventory.view', 'deliveries.view', 'transfers.view', 'revisions.view']
 };
 
 export function defaultPermissions(role) {
