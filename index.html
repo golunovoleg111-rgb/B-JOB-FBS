@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0f172a" />
   <title>B-JOB FBS</title>
+  <link rel="stylesheet" href="./src/styles.css" />
   <style>
     html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f5f7fb;color:#172033}
     #boot{min-height:100vh;display:grid;place-items:center;padding:24px;box-sizing:border-box}
@@ -16,7 +17,7 @@
   <div id="app">
     <main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Загрузка приложения…</p><div id="bootError" class="boot-error"></div></section></main>
   </div>
-  <noscript><main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Для работы приложения необходимо включить JavaScript.</p></section></main></noscript>
+  <noscript><main id="boot"><section class="boot-card"><h1>B-JOB FBS</h1><p>Для работы приложения необходимо включить JavaScript.</p></section></noscript>
   <script>
     window.addEventListener('error', function (event) {
       var box = document.getElementById('bootError');
