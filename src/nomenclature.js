@@ -14,16 +14,21 @@ function render() {
   if (!page || !heading || heading.textContent.trim() !== 'Учет номенклатуры') return;
   const edit = canEdit();
   const rows = getItems().map(normalize);
-  page.innerHTML = `<div class="card table-card nomenclature-card"><div class="table-head"><div><h2>Учет номенклатуры</h2><p class="muted">Артикулы, размеры и баркоды для работы склада и сканирования.</p></div>${edit ? '<div class="nomenclature-actions"><button class="secondary" id="nomenclatureImport">⇧ Импорт Excel</button><button class="primary" id="nomenclatureAdd">＋ Добавить изделие</button></div>' : '<span class="readonly">Только просмотр</span>'}</div><div class="nomenclature-toolbar"><div class="search-wrap"><span class="search-icon">⌕</span><input id="nomenclatureSearch" placeholder="Поиск по артикулу, размеру или баркоду" autocomplete="off"></div><span class="muted" id="nomenclatureCount"></span></div><div class="table-scroll"><table><thead><tr><th>Баркод</th><th>Артикул продавца</th><th>Размер</th>${edit ? '<th>Действия</th>' : ''}</tr></thead><tbody id="nomenclatureBody"></tbody></table></div></div>`;
+  page.innerHTML = `<div class="card table-card nomenclature-card"><div class="table-head"><div><h2>Учет номенклатуры</h2><p class="muted">Артикулы, размеры и баркоды для работы склада и сканирования.</p></div>${edit ? '<div class="nomenclature-actions"><button class="secondary" id="nomenclatureImport">⇧ Импорт Excel</button><button class="primary" id="nomenclatureAdd">＋ Добавить изделие</button></div>' : '<span class="readonly">Только просмотр</span>'}</div><div class="nomenclature-toolbar"><div class="search-wrap"><span class="search-icon">⌕</span><input id="nomenclatureSearch" placeholder="Поиск по артикулу, размеру или баркоду" autocomplete="off"></div><select id="nomenclatureSort" class="nomenclature-sort"><option value="article-asc">Артикул ↑</option><option value="article-desc">Артикул ↓</option><option value="size-asc">Размер ↑</option><option value="size-desc">Размер ↓</option></select><span class="muted" id="nomenclatureCount"></span></div><div class="table-scroll"><table><thead><tr><th>Баркод</th><th>Артикул продавца</th><th>Размер</th>${edit ? '<th>Действия</th>' : ''}</tr></thead><tbody id="nomenclatureBody"></tbody></table></div></div>`;
   const body = page.querySelector('#nomenclatureBody');
   const count = page.querySelector('#nomenclatureCount');
+  const sortSelect = page.querySelector('#nomenclatureSort');
+  const collator = new Intl.Collator('ru', { numeric: true, sensitivity: 'base' });
+  const sortRows = (list, mode) => [...list].sort((a, b) => { const [field, direction] = mode.split('-'); const value = collator.compare(String(a[field] || ''), String(b[field] || '')); return direction === 'desc' ? -value : value; });
   const drawRows = list => {
-    count.textContent = `${list.length} ${list.length === 1 ? 'позиция' : 'позиций'}`;
-    body.innerHTML = list.length ? list.map(item => `<tr><td class="barcode-cell">${esc(item.barcode)}</td><td><b>${esc(item.article)}</b></td><td>${esc(item.size)}</td>${edit ? `<td class="row-actions"><button class="secondary small" data-edit="${esc(item.id)}">Изменить</button><button class="danger-button small" data-delete="${esc(item.id)}">Удалить</button></td>` : ''}</tr>`).join('') : `<tr><td colspan="${edit ? 4 : 3}" class="empty-cell"><b>Номенклатура пока пуста</b><br><span class="muted">${edit ? 'Добавьте изделие вручную или импортируйте Excel Wildberries.' : 'Изделия пока не добавлены.'}</span></td></tr>`;
+    const sorted = sortRows(list, sortSelect.value);
+    count.textContent = `${sorted.length} ${sorted.length === 1 ? 'позиция' : 'позиций'}`;
+    body.innerHTML = sorted.length ? sorted.map(item => `<tr><td class="barcode-cell">${esc(item.barcode)}</td><td><b>${esc(item.article)}</b></td><td>${esc(item.size)}</td>${edit ? `<td class="row-actions"><button class="secondary small" data-edit="${esc(item.id)}">Изменить</button><button class="danger-button small" data-delete="${esc(item.id)}">Удалить</button></td>` : ''}</tr>`).join('') : `<tr><td colspan="${edit ? 4 : 3}" class="empty-cell"><b>Номенклатура пока пуста</b><br><span class="muted">${edit ? 'Добавьте изделие вручную или импортируйте Excel Wildberries.' : 'Изделия пока не добавлены.'}</span></td></tr>`;
     bindActions();
   };
   const filter = () => { const q = page.querySelector('#nomenclatureSearch').value.trim().toLowerCase(); drawRows(rows.filter(item => [item.barcode, item.article, item.size].some(v => String(v || '').toLowerCase().includes(q)))); };
   page.querySelector('#nomenclatureSearch').oninput = filter;
+  sortSelect.onchange = filter;
   page.querySelector('#nomenclatureAdd')?.addEventListener('click', () => openModal());
   page.querySelector('#nomenclatureImport')?.addEventListener('click', () => openImport());
   function bindActions() {
