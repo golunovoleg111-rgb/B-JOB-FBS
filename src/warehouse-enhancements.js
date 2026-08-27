@@ -1,0 +1,34 @@
+const WHE_DB='bjob-fbs-db-v1';
+const WHE_SESSION='bjob-fbs-session-v1';
+const wheLoad=()=>{try{return JSON.parse(localStorage.getItem(WHE_DB))||{};}catch{return {};}};
+const wheSave=db=>localStorage.setItem(WHE_DB,JSON.stringify(db));
+const wheUser=()=>{try{return JSON.parse(localStorage.getItem(WHE_SESSION));}catch{return null;}};
+const wheCan=()=>{const u=wheUser();return u?.role==='admin'||(u?.permissions||[]).includes('warehouse.edit');};
+const wheEsc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function wheWarehouse(){const db=wheLoad();return db.warehouses?.[0];}
+function wheCurrent(){const db=wheLoad();const page=document.querySelector('#page');const sel=page?.querySelector('#whSelect');const id=sel?.value;return db.warehouses?.find(w=>w.id===id)||db.warehouses?.[0];}
+function wheShowBoxModal(zoneId){
+ const db=wheLoad(),w=wheCurrent(),z=w?.zones?.find(x=>x.id===zoneId);if(!w||!z)return;
+ const items=db.nomenclature||[];if(!items.length){alert('Сначала загрузите номенклатуру в разделе «Учет номенклатуры».');return;}
+ document.querySelector('#wheBoxModal')?.remove();
+ const rows=items.map((n,i)=>`<option value="${i}">${wheEsc(n.article)} · ${wheEsc(n.size)} · ${wheEsc(n.barcode)}</option>`).join('');
+ const wrap=document.createElement('div');wrap.id='wheBoxModal';wrap.className='wh-modal-backdrop';wrap.innerHTML=`<div class="wh-modal"><div class="wh-modal-head"><div><div class="eyebrow">${wheEsc(z.name)}</div><h2>Добавить ящик</h2><p class="muted">Выберите изделие из загруженной номенклатуры и укажите количество.</p></div><button class="wh-modal-close" data-whe-close>×</button></div><div class="wh-form-grid"><label>Изделие<select id="wheItem"><option value="">Выберите изделие</option>${rows}</select></label><label>Количество<input id="wheQty" type="number" min="1" step="1" value="1"></label></div><div class="wh-modal-actions"><button class="secondary" data-whe-close>Отмена</button><button class="primary" id="wheBoxSave">Добавить ящик</button></div></div>`;
+ document.body.appendChild(wrap);wrap.querySelectorAll('[data-whe-close]').forEach(b=>b.onclick=()=>wrap.remove());wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove();});wrap.querySelector('#wheBoxSave').onclick=()=>{const i=Number(wrap.querySelector('#wheItem').value),q=Number(wrap.querySelector('#wheQty').value),item=items[i];if(!item||!Number.isInteger(q)||q<1){alert('Выберите изделие и укажите положительное количество.');return;}if((z.boxIds?.length||0)>=z.capacity){alert('Зона заполнена.');wrap.remove();return;}db.boxes||=[];db.inventory||=[];const box={id:`box_${crypto.randomUUID().slice(0,8)}`,name:`Ящик ${String(db.boxes.length+1).padStart(4,'0')}`,qr:`BJOB-${String(db.boxes.length+1).padStart(6,'0')}`,warehouseId:w.id,zoneId:z.id,contents:[{barcode:item.barcode,article:item.article,size:item.size,quantity:q}],createdAt:Date.now()};db.boxes.push(box);z.boxIds||=[];z.boxIds.push(box.id);wheRebuildInventory(db,w.id);wheSave(db);wrap.remove();document.dispatchEvent(new CustomEvent('whe-refresh'));};
+}
+function wheOpenBox(id){const db=wheLoad(),b=db.boxes?.find(x=>x.id===id);if(!b)return;const c=b.contents?.[0]||{};const wrap=document.createElement('div');wrap.className='wh-modal-backdrop';wrap.innerHTML=`<div class="wh-modal"><div class="wh-modal-head"><div><div class="eyebrow">${wheEsc(b.name)}</div><h2>Содержимое ящика</h2></div><button class="wh-modal-close" data-close>×</button></div><div class="wh-form-grid"><label>Артикул<input readonly value="${wheEsc(c.article)}"></label><label>Размер<input readonly value="${wheEsc(c.size)}"></label><label>Баркод<input readonly value="${wheEsc(c.barcode)}"></label><label>Количество<input readonly value="${wheEsc(c.quantity)}"></label></div></div>`;document.body.appendChild(wrap);wrap.querySelector('[data-close]').onclick=()=>wrap.remove();wrap.addEventListener('click',e=>{if(e.target===wrap)wrap.remove();});}
+function wheRebuildInventory(db,wid){db.inventory=(db.inventory||[]).filter(r=>r.warehouseId!==wid);const w=db.warehouses?.find(x=>x.id===wid);for(const b of (db.boxes||[]).filter(x=>x.warehouseId===wid)){const z=w?.zones?.find(x=>x.id===b.zoneId);for(const c of b.contents||[]){let r=db.inventory.find(x=>x.warehouseId===wid&&x.barcode===c.barcode&&x.zone===z?.name);if(!r){r={warehouseId:wid,barcode:c.barcode,article:c.article,size:c.size,zone:z?.name||'Без зоны',quantity:0};db.inventory.push(r);}r.quantity+=Number(c.quantity)||0;}}}
+function wheBounds(){
+ const db=wheLoad(),w=wheCurrent();if(!w)return;const rect=w.elements?.find(e=>e.type==='rect');if(!rect)return;
+ const clamp=o=>{o.x=Math.max(rect.x+1,Math.min(rect.x+rect.w-o.w-1,o.x));o.y=Math.max(rect.y+1,Math.min(rect.y+rect.h-o.h-1,o.y));};
+ (w.zones||[]).forEach(clamp);(w.elements||[]).filter(e=>e.type!=='rect').forEach(clamp);wheSave(db);
+}
+function whePatch(){const page=document.querySelector('#page');if(!page||document.querySelector('header h1')?.textContent.trim()!=='Склад FBS')return;
+ page.querySelectorAll('[data-zone-add]').forEach(b=>{if(b.dataset.wheBound)return;b.dataset.wheBound='1';b.onclick=e=>{e.stopPropagation();wheShowBoxModal(b.dataset.zoneAdd);};});
+ page.querySelectorAll('[data-box-open]').forEach(b=>{if(b.dataset.wheBound)return;b.dataset.wheBound='1';b.onclick=e=>{e.stopPropagation();wheOpenBox(b.dataset.boxOpen);};});
+ page.querySelectorAll('[data-zone-id]').forEach(el=>{if(el.dataset.wheDrag)return;el.dataset.wheDrag='1';const canvas=el.closest('.wh-map');if(!canvas)return;let d=null;el.addEventListener('pointerdown',e=>{if(e.target.closest('button')||e.target.classList.contains('wh-resize'))return;e.preventDefault();const r=canvas.getBoundingClientRect();d={sx:parseFloat(el.style.left),sy:parseFloat(el.style.top,x),x:e.clientX,y:e.clientY,r};});el.addEventListener('pointermove',e=>{if(!d)return;const r=d.r,dx=(e.clientX-d.x)/r.width*100,dy=(e.clientY-d.y)/r.height*100;el.style.left=`${d.sx+dx}%`;el.style.top=`${d.sy+dy}%`;});el.addEventListener('pointerup',()=>{if(!d)return;const db=wheLoad(),w=wheCurrent(),z=w?.zones?.find(x=>x.id===el.dataset.zoneId);if(z){z.x=parseFloat(el.style.left);z.y=parseFloat(el.style.top);wheBounds();}d=null;});});
+ const rect=wheCurrent()?.elements?.find(e=>e.type==='rect');if(rect&&rect.w<50){rect.w=78;rect.h=72;wheSave(wheLoad());}
+ page.querySelectorAll('.wh-zone').forEach(z=>{z.style.overflow='hidden';});
+}
+new MutationObserver(whePatch).observe(document.documentElement,{childList:true,subtree:true});
+document.addEventListener('whe-refresh',()=>{const p=document.querySelector('#page');if(p){p.querySelector('.wh-toolbar')?.dispatchEvent(new Event('click'));location.reload();}});
+setTimeout(whePatch,300);
