@@ -1,105 +1,21 @@
 (()=>{
-  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
-
-  const roomBounds=(map)=>{
-    const wall=map?.querySelector('.wh-element.rect');
-    if(!wall)return null;
-    const mr=map.getBoundingClientRect(),wr=wall.getBoundingClientRect();
-    if(!mr.width||!mr.height)return null;
-    return {
-      x:((wr.left-mr.left)/mr.width)*100,
-      y:((wr.top-mr.top)/mr.height)*100,
-      w:(wr.width/mr.width)*100,
-      h:(wr.height/mr.height)*100
-    };
-  };
-
-  const removeZoneResizeHandles=(root=document)=>{
-    root.querySelectorAll('[data-resize-zone]').forEach(el=>el.remove());
-  };
-
-  const keepInsideRoom=(zone,map)=>{
-    const room=roomBounds(map);
-    if(!room)return;
-    let x=parseFloat(zone.style.left)||0;
-    let y=parseFloat(zone.style.top)||0;
-    let w=parseFloat(zone.style.width)||0;
-    let h=parseFloat(zone.style.height)||0;
-    const maxW=Math.max(5,room.w),maxH=Math.max(5,room.h);
-    w=Math.min(w,maxW);
-    h=Math.min(h,maxH);
-    x=clamp(x,room.x,room.x+room.w-w);
-    y=clamp(y,room.y,room.y+room.h-h);
-    zone.style.left=`${x}%`;
-    zone.style.top=`${y}%`;
-    zone.style.width=`${w}%`;
-    zone.style.height=`${h}%`;
-  };
-
-  const setup=()=>{
-    const page=document.querySelector('#page');
-    if(!page)return;
-    removeZoneResizeHandles(page);
-    if(page.dataset.zoneLayoutBound==='1')return;
-    page.dataset.zoneLayoutBound='1';
-
-    page.addEventListener('click',e=>{
-      const box=e.target.closest('[data-box-open], [data-zone-add], [data-zone-edit], [data-resize-zone], .wh-zone-expand');
-      if(box)return;
-      const zone=e.target.closest('.wh-zone');
-      if(!zone)return;
-      toggle(zone);
-    });
-
-    page.addEventListener('pointerup',e=>{
-      const zone=e.target.closest('.wh-zone');
-      if(!zone)return;
-      const map=zone.closest('.wh-map');
-      if(map)keepInsideRoom(zone,map);
-    },true);
-  };
-
-  const toggle=zone=>{
-    const map=zone.closest('.wh-map');
-    if(!map)return;
-    if(zone.classList.contains('zone-expanded')){
-      zone.classList.remove('zone-expanded');
-      zone.querySelector('.wh-zone-expand')?.remove();
-      zone.querySelector('.wh-zone-expanded-label')?.remove();
-      if(zone.dataset.prevStyle){
-        zone.setAttribute('style',zone.dataset.prevStyle);
-        delete zone.dataset.prevStyle;
-      }
-      keepInsideRoom(zone,map);
-      return;
-    }
-
-    zone.dataset.prevStyle=zone.getAttribute('style')||'';
-    const mapRect=map.getBoundingClientRect(),z=zone.getBoundingClientRect();
-    const x=((z.left-mapRect.left)/mapRect.width)*100;
-    const y=((z.top-mapRect.top)/mapRect.height)*100;
-    const room=roomBounds(map);
-    let w=42,h=42;
-    if(room){
-      w=Math.min(w,room.w);
-      h=Math.min(h,room.h);
-    }
-    zone.classList.add('zone-expanded');
-    zone.style.width=`${w}%`;
-    zone.style.height=`${h}%`;
-    zone.style.left=`${x}%`;
-    zone.style.top=`${y}%`;
-    keepInsideRoom(zone,map);
-    if(!zone.querySelector('.wh-zone-expand')){
-      zone.insertAdjacentHTML('afterbegin','<button type="button" class="wh-zone-expand" aria-label="Свернуть зону">−</button>');
-    }
-  };
-
-  new MutationObserver(()=>{
-    const page=document.querySelector('#page');
-    if(page)removeZoneResizeHandles(page);
-    setup();
-  }).observe(document.documentElement,{childList:true,subtree:true});
-
-  setup();
+const DB='bjob-fbs-db-v1';
+const load=()=>{try{return JSON.parse(localStorage.getItem(DB))||{};}catch{return {};}};
+const save=db=>localStorage.setItem(DB,JSON.stringify(db));
+const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+let pointer=null;
+function activeWarehouse(db){const sel=document.querySelector('#whSelect');return db.warehouses?.find(w=>w.id===sel?.value)||db.warehouses?.[0];}
+function roomBounds(w){const e=(w?.elements||[]).find(x=>x.type==='rect');return e?{x:Number(e.x)||0,y:Number(e.y)||0,w:Number(e.w)||100,h:Number(e.h)||100}:{x:1,y:1,w:98,h:98};}
+function inside(z,b){return z.x>=b.x&&z.y>=b.y&&z.x+z.w<=b.x+b.w&&z.y+z.h<=b.y+b.h;}
+function overlap(a,b){return a.id!==b.id&&a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function hasOverlap(z,zones){return (zones||[]).some(o=>overlap(z,o));}
+function setupZone(zone){if(zone.dataset.zoneBound==='1')return;zone.dataset.zoneBound='1';zone.style.touchAction='none';zone.addEventListener('pointerdown',e=>{if(zone.dataset.zoneEditing!=='1')return;if(e.target.closest('[data-zone-add],[data-box-open],[data-zone-edit],[data-zone-save],[data-zone-resize]'))return;const map=zone.closest('.wh-map');if(!map)return;const r=map.getBoundingClientRect();pointer={type:'move',zone,map,r,sx:e.clientX,sy:e.clientY,x:parseFloat(zone.style.left)||0,y:parseFloat(zone.style.top)||0,w:parseFloat(zone.style.width)||20,h:parseFloat(zone.style.height)||16};zone.setPointerCapture?.(e.pointerId);e.preventDefault();});zone.addEventListener('pointermove',e=>{if(!pointer||pointer.zone!==zone||pointer.type!=='move')return;const db=load(),w=activeWarehouse(db),b=roomBounds(w),dx=(e.clientX-pointer.sx)/pointer.r.width*100,dy=(e.clientY-pointer.sy)/pointer.r.height*100,temp={id:zone.dataset.zoneId,x:pointer.x+dx,y:pointer.y+dy,w:pointer.w,h:pointer.h};temp.x=clamp(temp.x,b.x,b.x+b.w-temp.w);temp.y=clamp(temp.y,b.y,b.y+b.h-temp.h);if(hasOverlap(temp,w.zones))return;zone.style.left=temp.x+'%';zone.style.top=temp.y+'%';});zone.addEventListener('pointerup',()=>{if(!pointer||pointer.zone!==zone||pointer.type!=='move')return;persistPosition(zone);pointer=null;});
+}
+function attachResize(zone){const h=zone.querySelector('[data-zone-resize]');if(!h||h.dataset.bound)return;h.dataset.bound='1';h.addEventListener('pointerdown',e=>{if(zone.dataset.zoneEditing!=='1')return;e.preventDefault();e.stopPropagation();const map=zone.closest('.wh-map'),r=map.getBoundingClientRect();pointer={type:'resize',zone,map,r,sx:e.clientX,sy:e.clientY,x:parseFloat(zone.style.left)||0,y:parseFloat(zone.style.top)||0,w:parseFloat(zone.style.width)||20,h:parseFloat(zone.style.height)||16};h.setPointerCapture?.(e.pointerId);});h.addEventListener('pointermove',e=>{if(!pointer||pointer.zone!==zone||pointer.type!=='resize')return;const db=load(),w=activeWarehouse(db),b=roomBounds(w),dx=(e.clientX-pointer.sx)/pointer.r.width*100,dy=(e.clientY-pointer.sy)/pointer.r.height*100,temp={id:zone.dataset.zoneId,x:pointer.x,y:pointer.y,w:clamp(pointer.w+dx,8,b.x+b.w-pointer.x),h:clamp(pointer.h+dy,8,b.y+b.h-pointer.y)};if(hasOverlap(temp,w.zones))return;zone.style.width=temp.w+'%';zone.style.height=temp.h+'%';});h.addEventListener('pointerup',()=>{if(pointer?.zone===zone&&pointer.type==='resize'){persistPosition(zone);pointer=null;}});}
+function persistPosition(zone){const db=load(),w=activeWarehouse(db),z=w?.zones?.find(x=>x.id===zone.dataset.zoneId);if(!z)return;Object.assign(z,{x:parseFloat(zone.style.left)||0,y:parseFloat(zone.style.top)||0,w:parseFloat(zone.style.width)||20,h:parseFloat(zone.style.height)||16});save(db);}
+function decorate(zone,z){zone.dataset.zoneEditing=z?.editing&&!z?.locked?'1':'0';zone.classList.toggle('zone-editing',zone.dataset.zoneEditing==='1');zone.querySelector('[data-zone-resize]')?.remove();zone.querySelector('[data-zone-save]')?.remove();if(zone.dataset.zoneEditing==='1'){zone.insertAdjacentHTML('beforeend','<button type="button" class="wh-zone-resize" data-zone-resize aria-label="Изменить размер зоны"></button><button type="button" class="wh-zone-save" data-zone-save>Сохранить расположение зоны</button>');attachResize(zone);}else{zone.style.cursor='default';}}
+function saveZone(zone){const db=load(),w=activeWarehouse(db),z=w?.zones?.find(x=>x.id===zone.dataset.zoneId);if(!z)return;const candidate={id:z.id,x:parseFloat(zone.style.left)||0,y:parseFloat(zone.style.top)||0,w:parseFloat(zone.style.width)||20,h:parseFloat(zone.style.height)||16},b=roomBounds(w);if(!inside(candidate,b)){alert('Зону нельзя разместить за пределами стен.');return;}if(hasOverlap(candidate,w.zones)){alert('Зона не может накладываться на другую зону.');return;}Object.assign(z,candidate,{editing:false,locked:true});save(db);window.render?.();}
+function createZone(){const db=load(),w=activeWarehouse(db);if(!w)return;const name=prompt('Название зоны',`Зона ${String.fromCharCode(65+(w.zones?.length||0))}`)?.trim();if(!name)return;const capacity=Number(prompt('Вместимость зоны в коробах или ящиках','10'));if(!Number.isInteger(capacity)||capacity<1){alert('Введите положительное целое число.');return;}w.zones=w.zones||[];const b=roomBounds(w),ww=Math.min(20,Math.max(8,b.w-4)),hh=Math.min(16,Math.max(8,b.h-4));let x=b.x+2,y=b.y+2,z={id:'zone_'+Math.random().toString(36).slice(2,10),name,capacity,boxIds:[],x,y,w:ww,h:hh,editing:true,locked:false,createdAt:Date.now()};for(const pos of [[b.x+2,b.y+2],[b.x+b.w-ww-2,b.y+2],[b.x+2,b.y+b.h-hh-2],[b.x+b.w-ww-2,b.y+b.h-hh-2]]){z.x=pos[0];z.y=pos[1];if(inside(z,b)&&!hasOverlap(z,w.zones))break;}if(!inside(z,b)||hasOverlap(z,w.zones)){alert('В помещении нет свободного места для новой зоны.');return;}w.zones.push(z);save(db);window.render?.();}
+function setup(){const page=document.querySelector('#page');if(!page)return;if(page.dataset.zoneRules!=='2'){page.dataset.zoneRules='2';page.addEventListener('click',e=>{const add=e.target.closest('#whAddZone');if(add){e.preventDefault();e.stopImmediatePropagation();createZone();return;}const save=e.target.closest('[data-zone-save]');if(save){e.preventDefault();e.stopPropagation();saveZone(save.closest('.wh-zone'));return;}});}const db=load(),w=activeWarehouse(db);page.querySelectorAll('.wh-zone').forEach(zone=>{const z=w?.zones?.find(x=>x.id===zone.dataset.zoneId);decorate(zone,z);setupZone(zone);});}
+new MutationObserver(setup).observe(document.documentElement,{childList:true,subtree:true});setup();
 })();
