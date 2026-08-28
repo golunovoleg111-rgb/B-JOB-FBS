@@ -2,8 +2,9 @@ import { AuthService } from './auth/auth.js';
 import { roleName } from './auth/permissions.js';
 import { loadDatabase, saveDatabase } from './core/storage.js';
 import { warehousePage, bindWarehouse, inventoryV2 } from './warehouse.js';
-import './styles.css';
 
+const styleHref = new URL('./styles.css', import.meta.url).href;
+if (!document.querySelector('link[data-bjob-styles]')) { const link=document.createElement('link'); link.rel='stylesheet'; link.href=styleHref; link.dataset.bjobStyles='1'; document.head.appendChild(link); }
 const NAV=[['warehouse','Склад FBS','warehouse.view'],['inventory','Учет склада','inventory.view'],['deliveries','Заявки на поставки','deliveries.view'],['transfers','Заявка на перемещение','transfers.view'],['revisions','Ревизия','revisions.view'],['nomenclature','Учет номенклатуры','nomenclature.view']];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const state={db:loadDatabase(),page:'warehouse'};const auth=new AuthService(state.db,()=>saveDatabase(state.db));
