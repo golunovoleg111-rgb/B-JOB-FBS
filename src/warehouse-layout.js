@@ -17,6 +17,8 @@
     if(!map)return;
     if(zone.classList.contains('zone-expanded')){
       zone.classList.remove('zone-expanded');
+      zone.querySelector('.wh-zone-expand')?.remove();
+      zone.querySelector('.wh-zone-expanded-label')?.remove();
       if(zone.dataset.prevStyle){zone.setAttribute('style',zone.dataset.prevStyle);delete zone.dataset.prevStyle;}
       return;
     }
@@ -27,8 +29,7 @@
     const w=42,h=42;
     zone.style.left=`${clamp(x,1,100-w-1)}%`;
     zone.style.top=`${clamp(y,1,100-h-1)}%`;
-    zone.insertAdjacentHTML('afterbegin','<button type="button" class="wh-zone-expand" aria-label="Свернуть зону">−</button>');
-    zone.insertAdjacentHTML('beforeend','<span class="wh-zone-expanded-label">Нажмите на свободное место зоны, чтобы свернуть.</span>');
+    if(!zone.querySelector('.wh-zone-expand'))zone.insertAdjacentHTML('afterbegin','<button type="button" class="wh-zone-expand" aria-label="Свернуть зону">−</button>');
   };
   new MutationObserver(setup).observe(document.documentElement,{childList:true,subtree:true});
   setup();
