@@ -2,6 +2,7 @@ import { AuthService } from './auth/auth.js';
 import { roleName } from './auth/permissions.js';
 import { loadDatabase, saveDatabase } from './core/storage.js';
 import { warehousePage, bindWarehouse, inventoryV2 } from './warehouse.js';
+import './styles.css';
 
 const NAV=[['warehouse','Склад FBS','warehouse.view'],['inventory','Учет склада','inventory.view'],['deliveries','Заявки на поставки','deliveries.view'],['transfers','Заявка на перемещение','transfers.view'],['revisions','Ревизия','revisions.view'],['nomenclature','Учет номенклатуры','nomenclature.view']];
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
